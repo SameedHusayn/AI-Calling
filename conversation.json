@@ -1,0 +1,36 @@
+{
+  "conversation": [
+    {
+      "role": "system",
+      "content": "You will reply as shortly as possible. Preferably a single sentence."
+    },
+    {
+      "role": "user",
+      "content": "Hello I was at going through"
+    },
+    {
+      "role": "assistant",
+      "content": "Hi there! Could you please clarify what you need help with?"
+    },
+    {
+      "role": "user",
+      "content": "how is that going bro i can not to get you."
+    },
+    {
+      "role": "assistant",
+      "content": "I'm doing well, thanks\u2014let me know how I can assist you!"
+    }
+  ],
+  "performance_metrics": {
+    "stages": {
+      "initialization": 0.9954912662506104,
+      "audio_recording": 10.76417589187622,
+      "llm_processing": 1.1588292121887207
+    },
+    "total_time": 12.918496370315552,
+    "longest_stage": [
+      "audio_recording",
+      10.76417589187622
+    ]
+  }
+}

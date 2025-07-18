@@ -12,7 +12,6 @@ from openai import OpenAI, AsyncOpenAI
 import os
 from dotenv import load_dotenv
 import threading
-from queue import Queue
 import subprocess
 import platform
 
@@ -365,30 +364,34 @@ class ConversationSystem:
             )
             
             # Process the streaming response
-            print("\nGPT Response: ", end="", flush=True)
+            print("\nGPT Response:")
             
             async for chunk in stream:
+                # Debug: Print the chunk structure
+                # print(f"Debug - Chunk type: {chunk.type}")
+                
                 # Track first token time
                 if not first_token_received:
                     first_token_time = time.time()
-                    print("\n⏱️ First token received in", 
-                          f"{first_token_time - self.tracker.current_stage_start:.2f}s")
+                    print(f"⏱️ First token received in {first_token_time - self.tracker.current_stage_start:.2f}s")
                     first_token_received = True
                 
-                # Get the chunk text
-                if hasattr(chunk, 'output_text'):
-                    chunk_text = chunk.output_text
-                    if chunk_text:
-                        print(chunk_text, end="", flush=True)
-                        full_response += chunk_text
-                        
-                        # Send to TTS in real-time
-                        self.tts.speak_chunk(chunk_text)
+                # Extract the text from the chunk based on its type
+                if hasattr(chunk, 'type') and chunk.type == "response.output_text.delta":
+                    if hasattr(chunk, 'delta'):
+                        chunk_text = chunk.delta or ""
+                        if chunk_text:
+                            print(chunk_text, end="", flush=True)
+                            full_response += chunk_text
+                            
+                            # Send to TTS in real-time
+                            self.tts.speak_chunk(chunk_text)
+            
+            print()  # New line after streaming completes
             
             # Make sure to speak any remaining text
             self.tts.speak_chunk("", final=True)
             
-            print()  # New line after streaming completes
             llm_time = self.tracker.end_stage()  # End LLM timing
             
             # Update conversation history
