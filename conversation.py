@@ -1,10 +1,9 @@
-"""Core conversation system"""
 import asyncio
 import json
 import time
 from performance import PerformanceTracker
 from audio import AudioRecorder
-from tts import StreamingTTS
+from tts import SeamlessTTS  # Changed import
 from llm import LLMProcessor
 from config import OPENAI_API_KEY, SYSTEM_MESSAGE
 
@@ -19,7 +18,7 @@ class ConversationSystem:
         self.tracker.start_stage("initialization")
         
         # Initialize components
-        self.tts = StreamingTTS(rate=tts_rate)
+        self.tts = SeamlessTTS(rate=tts_rate)  # Changed to new TTS class
         self.audio_recorder = AudioRecorder(silence_threshold, silence_duration)
         self.llm = LLMProcessor(openai_api_key, llm_model)
         
@@ -64,7 +63,7 @@ class ConversationSystem:
                 self.conversation_history.append({"role": "user", "content": full_text})
                 self.conversation_history.append({"role": "assistant", "content": response})
             
-            # Small delay to ensure final TTS processing
+            # Small delay to ensure TTS has time to process
             await asyncio.sleep(1)
         
         # Calculate and report turn duration

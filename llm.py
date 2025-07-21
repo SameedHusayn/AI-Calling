@@ -26,6 +26,7 @@ class LLMProcessor:
             
             # Full response collection
             full_response = ""
+            
             # Stream the response
             stream = await self.client.responses.create(
                 model=self.model,
@@ -53,13 +54,13 @@ class LLMProcessor:
                             print(chunk_text, end="", flush=True)
                             full_response += chunk_text
                             
-                            # Send to TTS in real-time
-                            tts.speak_chunk(chunk_text)
+                            # Collect text but don't speak yet
+                            tts.add_text(chunk_text)
             
             print()  # New line after streaming completes
             
-            # Make sure to speak any remaining text
-            tts.speak_chunk("", final=True)
+            # Signal that the response is complete
+            tts.add_text("", final=True)
             
             if tracker:
                 tracker.end_stage()  # End LLM timing
