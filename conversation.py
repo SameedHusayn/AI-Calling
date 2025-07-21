@@ -2,10 +2,8 @@
 import asyncio
 import json
 import time
-import os
 from performance import PerformanceTracker
 from audio import AudioRecorder
-from transcription import Transcriber
 from tts import StreamingTTS
 from llm import LLMProcessor
 from config import OPENAI_API_KEY, SYSTEM_MESSAGE
@@ -13,7 +11,7 @@ from config import OPENAI_API_KEY, SYSTEM_MESSAGE
 class ConversationSystem:
     """Main conversation system that ties everything together"""
     
-    def __init__(self, openai_api_key=OPENAI_API_KEY, model_size="base", language="en",
+    def __init__(self, openai_api_key=OPENAI_API_KEY, model_size="tiny.en", language="en",
                  llm_model="gpt-4.1-nano", silence_threshold=0.005, silence_duration=1.5,
                  tts_rate=1.0):
         # Performance tracking
@@ -23,8 +21,11 @@ class ConversationSystem:
         # Initialize components
         self.tts = StreamingTTS(rate=tts_rate)
         self.audio_recorder = AudioRecorder(silence_threshold, silence_duration)
-        self.transcriber = Transcriber(model_size, language)
         self.llm = LLMProcessor(openai_api_key, llm_model)
+        
+        # Configuration
+        self.model_size = model_size
+        self.language = language
         
         # Conversation state
         self.conversation_history = [{"role": "system", "content": SYSTEM_MESSAGE}]
@@ -38,24 +39,11 @@ class ConversationSystem:
         
         # Start recording audio and processing it in real-time
         self.tracker.start_stage("audio_recording")
-        process_task = asyncio.create_task(
-            self.audio_recorder.process_audio_realtime(self.transcriber)
-        )
         await self.audio_recorder.start_recording(auto_stop=True)
-        
-        # Wait for processing to complete
-        try:
-            await process_task
-        except asyncio.CancelledError:
-            pass
-        
         self.tracker.end_stage()
         
-        # Get all transcription results
-        results = self.audio_recorder.get_transcription_results()
-        
-        # Combine into a single text
-        full_text = " ".join([r["text"] for r in results])
+        # Get the transcribed text
+        full_text = self.audio_recorder.get_transcribed_text()
         
         # Print the full text
         print("\nComplete transcription:")

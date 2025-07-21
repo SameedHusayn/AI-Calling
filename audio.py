@@ -5,6 +5,7 @@ import asyncio
 import time
 import os
 from config import SAMPLE_RATE, CHANNELS, SILENCE_THRESHOLD, SILENCE_DURATION
+from transcription import FastTranscriber
 
 class AudioRecorder:
     """Class to handle audio recording and silence detection"""
@@ -24,10 +25,10 @@ class AudioRecorder:
         # Tracking if speech has been detected
         self.speech_detected = False
         
-        # For real-time transcription
-        self.processing_queue = asyncio.Queue()
-        self.transcription_results = []
-        
+        # For faster processing
+        self.processing_task = None
+        self.transcriber = None
+    
     def audio_callback(self, indata, frames, time_info, status):
         """Store audio chunks and detect silence"""
         if status:
@@ -59,12 +60,15 @@ class AudioRecorder:
     
     async def start_recording(self, auto_stop=True):
         """Start recording audio"""
+        # Initialize the optimized transcriber
+        self.transcriber = FastTranscriber(model_size="tiny.en")
+        self.transcriber.start_processing()
+        
         self.is_recording = True
         self.frames = []  # Clear any old frames
         self.auto_stop = auto_stop
         self.last_sound_time = time.time()  # Initialize with current time
         self.speech_detected = False  # Reset speech detection flag
-        self.transcription_results = []  # Reset transcription results
         
         # Start audio recording
         print("Starting audio recording...")
@@ -73,12 +77,15 @@ class AudioRecorder:
             channels=self.channels,
             samplerate=self.sample_rate,
             dtype='float32',
-            blocksize=int(self.sample_rate * 0.5)  # 500ms blocks for better processing
+            blocksize=int(self.sample_rate * 0.2)  # 200ms blocks for lower latency
         )
         self.stream.start()
         
         print(f"Recording started! Speak into your microphone...")
         print(f"Waiting for speech, then will auto-stop after {self.silence_duration} seconds of silence")
+        
+        # Start processing audio in the background
+        self.processing_task = asyncio.create_task(self._process_audio_stream())
         
         # Check recording status in a loop
         await self._check_recording_status()
@@ -86,72 +93,49 @@ class AudioRecorder:
         # Cleanup
         self.stream.stop()
         self.stream.close()
+        
+        # Stop the transcriber
+        await self.transcriber.stop_processing()
+        
+        # Cancel processing task
+        if self.processing_task:
+            self.processing_task.cancel()
     
     async def _check_recording_status(self):
         """Check if recording should be stopped"""
         while self.is_recording:
             await asyncio.sleep(0.1)
     
-    async def process_audio_realtime(self, transcriber):
-        """Process audio frames in real-time through the transcriber"""
-        buffer_size = int(self.sample_rate * 2)  # 2-second buffer
-        buffer = np.array([], dtype=np.float32)
-        last_process_time = time.time()
-        
-        # Process while recording
+    async def _process_audio_stream(self):
+        """Process audio frames in real-time for transcription"""
         while self.is_recording:
             # Get all new frames
             if self.frames:
                 new_frames = self.frames.copy()
                 self.frames = []
                 
-                # Convert and append to buffer
+                # Process each frame
                 for frame in new_frames:
-                    # Ensure we're dealing with the right shape - flatten if multi-channel
+                    # Get mono audio
                     if len(frame.shape) > 1 and frame.shape[1] > 1:
-                        # Just take the first channel if we have multiple
-                        frame_data = frame[:, 0]
+                        audio_data = frame[:, 0]  # First channel
                     else:
-                        frame_data = frame.flatten()
+                        audio_data = frame.flatten()
                     
-                    buffer = np.append(buffer, frame_data)
+                    # Feed to transcriber
+                    await self.transcriber.add_audio(audio_data)
             
-            # Process buffer if it's large enough or enough time has passed
-            current_time = time.time()
-            if len(buffer) >= buffer_size or (current_time - last_process_time > 2.0 and len(buffer) > 0):
-                # Send to transcriber
-                text = await transcriber.process_audio_chunk(buffer)
-                
-                # Store result if we got text
-                if text:
-                    self.transcription_results.append({
-                        "timestamp": time.time(),
-                        "text": text
-                    })
-                
-                # Clear buffer and reset timer
-                buffer = np.array([], dtype=np.float32)
-                last_process_time = current_time
-                
-            await asyncio.sleep(0.1)
-            
-        # Process any remaining audio
-        if len(buffer) > 0:
-            text = await transcriber.process_audio_chunk(buffer)
-            if text:
-                self.transcription_results.append({
-                    "timestamp": time.time(),
-                    "text": text
-                })
-                
-        # Final cleanup - process any audio that might be in the transcriber's buffer
-        text = await transcriber.finalize()
-        if text:
-            self.transcription_results.append({
-                "timestamp": time.time(),
-                "text": text
-            })
-        
+            # Short sleep to avoid CPU spinning
+            await asyncio.sleep(0.01)
+    
     def get_transcription_results(self):
-        """Get the list of transcription results"""
-        return self.transcription_results
+        """Get all transcription results"""
+        if self.transcriber:
+            return self.transcriber.get_results()
+        return []
+        
+    def get_transcribed_text(self):
+        """Get the full transcribed text"""
+        if self.transcriber:
+            return self.transcriber.get_transcribed_text()
+        return ""

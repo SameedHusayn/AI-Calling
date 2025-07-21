@@ -1,110 +1,146 @@
-"""Optimized speech-to-text functionality"""
+"""Ultra-optimized speech-to-text functionality"""
 import asyncio
-import os
 import numpy as np
 import time
+import threading
 from faster_whisper import WhisperModel
-from config import DEFAULT_WHISPER_MODEL, DEFAULT_LANGUAGE
+from config import SAMPLE_RATE
 
-class Transcriber:
-    """Class for speech-to-text transcription using Whisper"""
+# Global transcription model (loaded once)
+_whisper_model = None
+_model_lock = threading.Lock()
+
+def get_whisper_model(model_size="tiny.en", compute_type="int8"):
+    """Get or create the Whisper model (singleton)"""
+    global _whisper_model
+    if _whisper_model is None:
+        with _model_lock:
+            if _whisper_model is None:
+                print(f"Loading Whisper {model_size} model...")
+                _whisper_model = WhisperModel(model_size, device="cpu", compute_type=compute_type)
+                print(f"Model loaded successfully!")
+    return _whisper_model
+
+class FastTranscriber:
+    """Ultra-optimized transcriber for lowest latency"""
     
-    def __init__(self, model_size=DEFAULT_WHISPER_MODEL, language=DEFAULT_LANGUAGE):
+    def __init__(self, model_size="tiny.en", language="en"):
         self.model_size = model_size
         self.language = language
+        self.sample_rate = SAMPLE_RATE
         
-        # Initialize the Whisper model directly
-        print(f"Loading Whisper {model_size} model...")
-        self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
-        print("Model loaded successfully!")
+        # Pre-load the model during init
+        self.model = get_whisper_model(model_size)
         
-        # Buffer for continuous audio processing
+        # Audio buffer and queue for parallel processing
         self.audio_buffer = np.array([], dtype=np.float32)
-        self.min_audio_length = 16000  # 1 second at 16kHz
-        self.sample_rate = 16000
+        self.min_buffer_size = self.sample_rate * 1.5  # 1.5 seconds at 16kHz
         
-    async def process_audio_chunk(self, audio_data):
-        """Add audio chunk to buffer and determine if we should transcribe"""
-        # Append to buffer
+        # For segmenting audio by VAD
+        self.vad_threshold = 0.01
+        self.vad_window = int(self.sample_rate * 0.03)  # 30ms window
+        
+        # Transcription results
+        self.results = []
+        self.result_queue = asyncio.Queue()
+        
+        # Processing state
+        self.is_processing = False
+        self._processor_task = None
+        
+    def start_processing(self):
+        """Start background processing"""
+        self.is_processing = True
+        self._processor_task = asyncio.create_task(self._process_queue())
+        
+    async def stop_processing(self):
+        """Stop background processing"""
+        self.is_processing = False
+        if self._processor_task:
+            try:
+                await self._processor_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Process any remaining audio
+        if len(self.audio_buffer) > 0:
+            await self._transcribe_buffer()
+            
+    async def add_audio(self, audio_data):
+        """Add audio to buffer and process if needed"""
+        # Add to buffer
         self.audio_buffer = np.append(self.audio_buffer, audio_data)
         
-        # Only transcribe if we have enough audio
-        if len(self.audio_buffer) >= self.min_audio_length:
-            return await self.transcribe_buffer()
-        return None
+        # Check if we have enough for processing
+        if len(self.audio_buffer) >= self.min_buffer_size:
+            # Process the buffer in the background
+            await self._transcribe_buffer()
+    
+    async def _transcribe_buffer(self):
+        """Transcribe current buffer without clearing it"""
+        if len(self.audio_buffer) < self.min_buffer_size:
+            return
+            
+        # Extract audio for processing (keep last 0.5s for context)
+        buffer_to_process = self.audio_buffer.copy()
+        overlap = int(self.sample_rate * 0.5)  # 0.5 seconds overlap
+        self.audio_buffer = self.audio_buffer[-overlap:] if len(self.audio_buffer) > overlap else np.array([], dtype=np.float32)
         
-    async def transcribe_buffer(self):
-        """Transcribe the current audio buffer directly in memory"""
-        if len(self.audio_buffer) < self.min_audio_length:
-            return None
+        # Start transcription in a thread pool
+        start_time = time.time()
+        
+        # Use a separate thread for model inference
+        def _transcribe():
+            try:
+                segments, _ = self.model.transcribe(
+                    audio=buffer_to_process,
+                    language=self.language,
+                    vad_filter=True,
+                    vad_parameters=dict(min_silence_duration_ms=500)
+                )
+                
+                # Collect all text
+                text = ""
+                for segment in segments:
+                    text += segment.text + " "
+                
+                text = text.strip()
+                return text
+            except Exception as e:
+                print(f"Transcription error: {e}")
+                return ""
+        
+        # Run in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        text = await loop.run_in_executor(None, _transcribe)
+        
+        # Add result if we got text
+        if text:
+            duration = time.time() - start_time
+            print(f"Transcription ({duration:.2f}s): {text}")
+            self.results.append({
+                "timestamp": time.time(),
+                "text": text,
+                "duration": duration
+            })
             
-        try:
-            # Process the current buffer
-            start_time = time.time()
-            print(f"Transcribing {len(self.audio_buffer)/self.sample_rate:.1f}s of audio...")
-            
-            # Run transcription in a thread pool to avoid blocking
-            # FIX: Correctly call transcribe with audio and options
-            segments, _ = await asyncio.to_thread(
-                self.model.transcribe, 
-                audio=self.audio_buffer,  # Named parameter
-                language=self.language,
-                vad_filter=True
-            )
-            
-            # Process the segments
-            text = ""
-            for segment in segments:
-                text += segment.text + " "
-            
-            text = text.strip()
-            if text:
-                print(f"Transcription ({time.time() - start_time:.2f}s): {text}")
-            
-            # Clear the buffer after transcription
-            self.audio_buffer = np.array([], dtype=np.float32)
-            
-            return text
-            
-        except Exception as e:
-            print(f"Error transcribing buffer: {e}")
-            import traceback
-            traceback.print_exc()
-            # Keep the buffer in case of error
-            return None
-            
-    async def transcribe_file(self, file_path):
-        """Legacy method to transcribe from file - for compatibility"""
-        try:
-            chunk_name = os.path.basename(file_path)
-            print(f"Transcribing {chunk_name}...")
-            
-            # Run transcription in a thread pool
-            segments, _ = await asyncio.to_thread(
-                self.model.transcribe, 
-                audio=file_path,  # Named parameter
-                language=self.language,
-                vad_filter=True
-            )
-            
-            # Process the segments
-            text = ""
-            for segment in segments:
-                text += segment.text + " "
-            
-            text = text.strip()
-            if text:
-                print(f"Transcription: {text}")
-            
-            # Return the transcription and the path for cleanup
-            return text, file_path
-            
-        except Exception as e:
-            print(f"Error transcribing file {file_path}: {e}")
-            return "", file_path
-            
-    async def finalize(self):
-        """Transcribe any remaining audio in the buffer"""
-        if len(self.audio_buffer) > 0:
-            return await self.transcribe_buffer()
-        return None
+            # Add to queue for real-time processing
+            await self.result_queue.put(text)
+    
+    async def _process_queue(self):
+        """Background task to process transcription results"""
+        while self.is_processing:
+            # Process any available audio
+            if len(self.audio_buffer) >= self.min_buffer_size:
+                await self._transcribe_buffer()
+                
+            # Short sleep to avoid CPU spinning
+            await asyncio.sleep(0.01)
+    
+    def get_results(self):
+        """Get all transcription results"""
+        return self.results
+        
+    def get_transcribed_text(self):
+        """Get the full transcribed text"""
+        return " ".join([r["text"] for r in self.results])
