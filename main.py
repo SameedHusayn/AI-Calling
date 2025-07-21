@@ -7,15 +7,7 @@ from config import OPENAI_API_KEY
 # Global flag for graceful shutdown
 running = True
 
-def signal_handler(sig, frame):
-    """Handle keyboard interrupt"""
-    global running
-    print("\nStopping conversation (Ctrl+C pressed)...")
-    running = False
-
 async def main():
-    # Set up signal handler for Ctrl+C
-    signal.signal(signal.SIGINT, signal_handler)
     
     # Set up overall timing
     start_time = time.time()
@@ -70,7 +62,7 @@ async def main():
         system.tracker.print_summary()
         
         # Save conversation and cleanup
-        system.save_conversation()
+        # system.save_conversation()
         system.cleanup()
 
 if __name__ == "__main__":

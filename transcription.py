@@ -1,4 +1,3 @@
-"""Ultra-optimized speech-to-text functionality"""
 import asyncio
 import numpy as np
 import time
@@ -10,7 +9,7 @@ from config import SAMPLE_RATE
 _whisper_model = None
 _model_lock = threading.Lock()
 
-def get_whisper_model(model_size="tiny.en", compute_type="int8"):
+def get_whisper_model(model_size="base.en", compute_type="int8"):
     """Get or create the Whisper model (singleton)"""
     global _whisper_model
     if _whisper_model is None:
@@ -24,7 +23,7 @@ def get_whisper_model(model_size="tiny.en", compute_type="int8"):
 class FastTranscriber:
     """Ultra-optimized transcriber for lowest latency"""
     
-    def __init__(self, model_size="tiny.en", language="en"):
+    def __init__(self, model_size="base.en", language="en"):
         self.model_size = model_size
         self.language = language
         self.sample_rate = SAMPLE_RATE
@@ -83,7 +82,7 @@ class FastTranscriber:
             
         # Extract audio for processing (keep last 0.5s for context)
         buffer_to_process = self.audio_buffer.copy()
-        overlap = int(self.sample_rate * 0.5)  # 0.5 seconds overlap
+        overlap = int(self.sample_rate * 0.2)  # 0.5 seconds overlap
         self.audio_buffer = self.audio_buffer[-overlap:] if len(self.audio_buffer) > overlap else np.array([], dtype=np.float32)
         
         # Start transcription in a thread pool
@@ -96,7 +95,7 @@ class FastTranscriber:
                     audio=buffer_to_process,
                     language=self.language,
                     vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=500)
+                    vad_parameters=dict(min_silence_duration_ms=1000)
                 )
                 
                 # Collect all text
