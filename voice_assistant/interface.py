@@ -1,6 +1,6 @@
 import gradio as gr, asyncio
-from conversation import ConversationSystem
-from config import OPENAI_API_KEY
+from voice_assistant.conversation import ConversationSystem
+from voice_assistant.config import OPENAI_API_KEY
 
 call_running = False
 

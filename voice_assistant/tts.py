@@ -4,7 +4,7 @@ import subprocess
 import threading
 import platform
 import queue
-from config import TTS_RATE
+from voice_assistant.config import TTS_RATE
 
 class SeamlessTTS:
     """TTS class that eliminates pauses between chunks"""

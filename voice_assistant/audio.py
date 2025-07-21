@@ -4,8 +4,8 @@ import sounddevice as sd
 import asyncio
 import time
 import os
-from config import SAMPLE_RATE, CHANNELS, SILENCE_THRESHOLD, SILENCE_DURATION
-from transcription import FastTranscriber
+from voice_assistant.config import SAMPLE_RATE, CHANNELS, SILENCE_THRESHOLD, SILENCE_DURATION
+from voice_assistant.transcription import FastTranscriber
 
 class AudioRecorder:
     """Class to handle audio recording and silence detection"""

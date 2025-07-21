@@ -1,8 +1,8 @@
 import asyncio
 import time
 import signal
-from conversation import ConversationSystem
-from config import OPENAI_API_KEY
+from voice_assistant.conversation import ConversationSystem
+from voice_assistant.config import OPENAI_API_KEY
 
 # Global flag for graceful shutdown
 running = True

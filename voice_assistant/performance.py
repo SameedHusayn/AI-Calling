@@ -1,4 +1,3 @@
-"""Performance tracking utilities"""
 import time
 
 class PerformanceTracker:

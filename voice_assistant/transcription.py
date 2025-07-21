@@ -3,7 +3,7 @@ import numpy as np
 import time
 import threading
 from faster_whisper import WhisperModel
-from config import SAMPLE_RATE
+from voice_assistant.config import SAMPLE_RATE
 
 # Global transcription model (loaded once)
 _whisper_model = None

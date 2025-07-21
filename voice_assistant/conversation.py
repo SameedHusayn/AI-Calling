@@ -1,11 +1,11 @@
 import asyncio
 import json
 import time
-from performance import PerformanceTracker
-from audio import AudioRecorder
-from tts import SeamlessTTS  # Changed import
-from llm import LLMProcessor
-from config import OPENAI_API_KEY, SYSTEM_MESSAGE
+from voice_assistant.performance import PerformanceTracker
+from voice_assistant.audio import AudioRecorder
+from voice_assistant.tts import SeamlessTTS  # Changed import
+from voice_assistant.llm import LLMProcessor
+from voice_assistant.config import OPENAI_API_KEY, SYSTEM_MESSAGE
 
 class ConversationSystem:
     """Main conversation system that ties everything together"""

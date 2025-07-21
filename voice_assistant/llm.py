@@ -1,6 +1,6 @@
 import time
 from openai import AsyncOpenAI
-from config import OPENAI_API_KEY, DEFAULT_LLM_MODEL, MAX_OUTPUT_TOKENS
+from voice_assistant.config import OPENAI_API_KEY, DEFAULT_LLM_MODEL, MAX_OUTPUT_TOKENS
 
 class LLMProcessor:
     """Class for handling language model interactions"""
