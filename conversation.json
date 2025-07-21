@@ -6,23 +6,23 @@
     },
     {
       "role": "user",
-      "content": "Hey man How is it going?"
+      "content": "Hello, how's it? How was that playing?"
     },
     {
       "role": "assistant",
-      "content": "Hey! I'm doing well, thanks for asking. How about you?"
+      "content": "Hello! I'm doing well, thank you, and I didn't play any games\u2014I'm here to assist you!"
     }
   ],
   "performance_metrics": {
     "stages": {
-      "initialization": 0.8006856441497803,
-      "audio_recording": 7.427709341049194,
-      "llm_processing": 2.050855875015259
+      "initialization": 0.6576831340789795,
+      "audio_recording": 5.99181056022644,
+      "llm_processing": 1.3173518180847168
     },
-    "total_time": 10.279250860214233,
+    "total_time": 7.966845512390137,
     "longest_stage": [
       "audio_recording",
-      7.427709341049194
+      5.99181056022644
     ]
   }
 }
