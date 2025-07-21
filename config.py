@@ -22,7 +22,7 @@ MIN_CHUNK_LENGTH = 10      # Minimum characters to speak
 MAX_BUFFER_SIZE = 150      # Maximum buffer size before forcing speech
 
 # Model settings
-DEFAULT_WHISPER_MODEL = "base"
+DEFAULT_WHISPER_MODEL = "large-v3"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_LLM_MODEL = "gpt-4.1-nano"
 MAX_OUTPUT_TOKENS = 128

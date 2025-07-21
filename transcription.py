@@ -9,7 +9,7 @@ from config import SAMPLE_RATE
 _whisper_model = None
 _model_lock = threading.Lock()
 
-def get_whisper_model(model_size="base.en", compute_type="int8"):
+def get_whisper_model(model_size="large-v3", compute_type="int8"):
     """Get or create the Whisper model (singleton)"""
     global _whisper_model
     if _whisper_model is None:
@@ -23,7 +23,7 @@ def get_whisper_model(model_size="base.en", compute_type="int8"):
 class FastTranscriber:
     """Ultra-optimized transcriber for lowest latency"""
     
-    def __init__(self, model_size="base.en", language="en"):
+    def __init__(self, model_size="large-v3", language="en"):
         self.model_size = model_size
         self.language = language
         self.sample_rate = SAMPLE_RATE

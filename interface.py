@@ -6,7 +6,7 @@ call_running = False
 
 system = ConversationSystem(
     openai_api_key=OPENAI_API_KEY,
-    model_size="base.en",
+    model_size="large-v3",
     language="en",
     llm_model="gpt-4.1-nano",
     silence_threshold=0.005,
