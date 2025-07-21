@@ -1,10 +1,22 @@
-"""Main entry point for the voice assistant"""
 import asyncio
 import time
+import signal
 from conversation import ConversationSystem
 from config import OPENAI_API_KEY
 
+# Global flag for graceful shutdown
+running = True
+
+def signal_handler(sig, frame):
+    """Handle keyboard interrupt"""
+    global running
+    print("\nStopping conversation (Ctrl+C pressed)...")
+    running = False
+
 async def main():
+    # Set up signal handler for Ctrl+C
+    signal.signal(signal.SIGINT, signal_handler)
+    
     # Set up overall timing
     start_time = time.time()
     
@@ -16,7 +28,7 @@ async def main():
     # Create conversation system
     system = ConversationSystem(
         openai_api_key=api_key,
-        model_size="base",
+        model_size="tiny.en",
         language="en",
         llm_model="gpt-4.1-nano",
         silence_threshold=0.005,
@@ -26,21 +38,25 @@ async def main():
     
     try:
         conversation_count = 0
-        while True:
+        
+        # Instructions for the user
+        print("\n🎙️ Voice Assistant Ready!")
+        print("Start speaking whenever you're ready")
+        print("Press Ctrl+C to exit the conversation at any time")
+        
+        # Continuous conversation loop
+        global running
+        while running:
             conversation_count += 1
             print(f"\n🔄 Starting conversation turn #{conversation_count}")
             
             # Run a conversation turn
             await system.start_conversation_turn()
             
-            # Ask if user wants to continue
-            print("\nDo you want to ask another question? (y/n)")
-            response = await asyncio.get_event_loop().run_in_executor(None, input)
-            if response.lower() != 'y':
-                break
+            # Small pause between turns
+            await asyncio.sleep(0.5)
+            print("\n👂 Listening for your next question...")
     
-    except KeyboardInterrupt:
-        print("Interrupted by user")
     except Exception as e:
         print(f"Error: {e}")
         import traceback
