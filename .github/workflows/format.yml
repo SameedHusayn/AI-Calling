@@ -1,32 +1,25 @@
 name: Black Auto Format
-
 on: [push, pull_request]
+
+permissions:
+  contents: write          
 
 jobs:
   format:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4          
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
-      - name: Install Black
-        run: pip install black
-
-      - name: Run Black to auto-format
-        run: black .
-
-      - name: Set remote to use HTTPS
-        run: git remote set-url origin https://${{ secrets.PERSONAL_TOKEN }}@github.com/${{ github.repository }}.git
-
-      - name: Commit and push if changed
+      - run: pip install black
+      - run: black .
+      - name: Commit & push if changed
         run: |
-          git config --global user.name "github-actions[bot]"
+          git config --global user.name  "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
-          git diff --cached --quiet || (git commit -m "Auto-format code with Black" && git push)
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto‑format code with Black"
+            git push
+          fi
