@@ -14,18 +14,19 @@ system = ConversationSystem(
     tts_rate=1.0,
 )
 
+
 def show_call():
     """Hide Start, show Stop."""
-    return (gr.Button.update(visible=False),
-            gr.Button.update(visible=True))
+    return (gr.Button.update(visible=False), gr.Button.update(visible=True))
+
 
 def hang_up():
     """Flip flag, clean up, swap buttons back."""
     global call_running
     call_running = False
     system.cleanup()
-    return (gr.Button.update(visible=True),
-            gr.Button.update(visible=False))
+    return (gr.Button.update(visible=True), gr.Button.update(visible=False))
+
 
 async def conversation_loop():
     """Yield (user_text, assistant_text) until user presses Stop."""
@@ -34,7 +35,8 @@ async def conversation_loop():
     while call_running:
         assistant_text = await system.start_conversation_turn()
         user_text = system.audio_recorder.get_transcribed_text()
-        yield user_text, assistant_text   # <-- streaming happens automatically
+        yield user_text, assistant_text  # <-- streaming happens automatically
+
 
 CSS = """
 #start {width:120px;height:120px;border-radius:60px;font-size:48px;
@@ -49,9 +51,9 @@ with gr.Blocks(css=CSS) as demo:
     gr.Markdown("## 🎙️ Voice Assistant – click once to start the call")
 
     start = gr.Button("🎤", elem_id="start")
-    stop  = gr.Button("⏹️", elem_id="stop", visible=False)
+    stop = gr.Button("⏹️", elem_id="stop", visible=False)
 
-    user_box      = gr.Textbox(label="You said", interactive=False, lines=2)
+    user_box = gr.Textbox(label="You said", interactive=False, lines=2)
     assistant_box = gr.Textbox(label="Assistant replied", interactive=False, lines=3)
 
     # 1. press Start → swap buttons
