@@ -22,7 +22,7 @@ jobs:
         run: black .
 
       - name: Set remote to use HTTPS
-        run: git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: git remote set-url origin https://${{ secrets.PERSONAL_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Commit and push if changed
         run: |
